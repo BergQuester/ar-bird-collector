@@ -18,9 +18,55 @@ class GameScene: SKScene {
     var timerLabel:SKLabelNode!
     var counterLabel:SKLabelNode!
 
+    var remainingTime: Int = 30 {
+        didSet {
+            timerLabel.text = "\(remainingTime) sec"
+        }
+    }
+
+    var score: Int = 0 {
+        didSet {
+            counterLabel.text = "\(score) Birds"
+        }
+    }
+
     static var gameState: GameState = .none
 
+    func setupHUD() {
+        timerLabel = self.childNode(withName: "timerLabel") as! SKLabelNode
+        counterLabel = self.childNode(withName: "counterLabel") as! SKLabelNode
+
+        timerLabel.position = CGPoint(x: (self.size.width / 2) - 70,
+                                      y: (self.size.height / 2) - 90)
+
+        counterLabel.position = CGPoint(x: -(self.size.width / 2) + 70,
+                                      y: (self.size.height / 2) - 90)
+
+        let wait = SKAction.wait(forDuration: 1)
+        let action = SKAction.run {
+            self.remainingTime -= 1
+        }
+
+        let timerAction = SKAction.sequence([wait, action])
+        self.run(SKAction.repeatForever(timerAction))
+    }
+
+    func gameOver() {
+        let reveal = SKTransition.crossFade(withDuration: 0.9)
+
+        guard let sceneView = self.view as? ARSKView else {
+            return
+        }
+
+        if let mainMenu = MainMenuScene(fileNamed: "MainMenuScene") {
+            sceneView.presentScene(mainMenu, transition: reveal)
+        }
+    }
+
     override func didMove(to view: SKView) {
+        NotificationCenter.default.addObserver(self, selector: #selector(GameScene.spawnBird), name: Notification.Name("Spawn"), object: nil)
+        setupHUD()
+
         let waitAction = SKAction.wait(forDuration: 0.5)
         let spawnAction = SKAction.run {
             self.performInitialSpawn()
@@ -30,6 +76,12 @@ class GameScene: SKScene {
     }
 
     override func update(_ currentTime: TimeInterval) {
+
+        if remainingTime == 0 {
+            self.removeAllActions()
+            gameOver()
+        }
+
         guard let sceneView = self.view as? ARSKView else {
             return
         }
@@ -47,6 +99,7 @@ class GameScene: SKScene {
                                 if bird == potentialTargetBird {
                                     bird.removeFromParent()
                                     spawnBird()
+                                    score += 1
                                 }
                             }
                         }
@@ -64,7 +117,7 @@ class GameScene: SKScene {
         }
     }
 
-    func spawnBird() {
+    @objc func spawnBird() {
         guard let sceneView = self.view as? ARSKView else {
             return
         }
@@ -72,9 +125,9 @@ class GameScene: SKScene {
         if let currentFrame = sceneView.session.currentFrame {
             var translation = matrix_identity_float4x4
 
-            translation.columns.3.x = randomPosition(lowerBound: -0.2, upperBound: 0.2)
-            translation.columns.3.y = randomPosition(lowerBound: -0.2, upperBound: 0.2)
-            translation.columns.3.z = randomPosition(lowerBound: -0.5, upperBound: 0.2)
+            translation.columns.3.x = randomPosition(lowerBound: -1.5, upperBound: 1.5)
+            translation.columns.3.y = randomPosition(lowerBound: -1.5, upperBound: 1.5)
+            translation.columns.3.z = randomPosition(lowerBound: -2, upperBound: 2)
 
             let transform = simd_mul(currentFrame.camera.transform, translation)
 

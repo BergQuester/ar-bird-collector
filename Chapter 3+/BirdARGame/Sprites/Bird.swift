@@ -35,7 +35,7 @@ class Bird : SKSpriteNode {
 
         let fade = SKAction.fadeOut(withDuration: TimeInterval(duration))
         let removeBird = SKAction.run {
-            // create new bird
+            NotificationCenter.default.post(name: Notification.Name("Spawn"), object: nil)
             self.removeFromParent()
         }
 
