@@ -18,7 +18,26 @@ class GameScene: SKScene {
     var timerLabel:SKLabelNode!
     var counterLabel:SKLabelNode!
 
-    func spawnBirds() {
+    static var gameState: GameState = .none
+
+    override func didMove(to view: SKView) {
+        let waitAction = SKAction.wait(forDuration: 0.5)
+        let spawnAction = SKAction.run {
+            self.performInitialSpawn()
+        }
+
+        self.run(SKAction.sequence([waitAction, spawnAction]))
+    }
+
+    func performInitialSpawn() {
+        GameScene.gameState = .spwanBirds
+
+        for _ in 1...numberOfBirds {
+            spawnBird()
+        }
+    }
+
+    func spawnBird() {
         guard let sceneView = self.view as? ARSKView else {
             return
         }
