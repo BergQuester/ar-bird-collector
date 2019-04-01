@@ -29,6 +29,33 @@ class GameScene: SKScene {
         self.run(SKAction.sequence([waitAction, spawnAction]))
     }
 
+    override func update(_ currentTime: TimeInterval) {
+        guard let sceneView = self.view as? ARSKView else {
+            return
+        }
+
+        if let cameraZ = sceneView.session.currentFrame?.camera.transform.columns.3.z {
+            for node in nodes(at: CGPoint.zero) {
+                if let bird = node as? Bird {
+                    guard let anchors = sceneView.session.currentFrame?.anchors else {
+                        return
+                    }
+
+                    for anchor in anchors {
+                        if abs(cameraZ - anchor.transform.columns.3.z) < 0.2 {
+                            if let potentialTargetBird = sceneView.node(for: anchor) {
+                                if bird == potentialTargetBird {
+                                    bird.removeFromParent()
+                                    spawnBird()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     func performInitialSpawn() {
         GameScene.gameState = .spwanBirds
 
