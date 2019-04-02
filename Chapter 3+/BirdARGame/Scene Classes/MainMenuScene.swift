@@ -23,11 +23,7 @@ class MainMenuScene: SKScene {
             if name == "StartGame" {
                 let transition = SKTransition.crossFade(withDuration: 0.9)
 
-                guard let sceneView = self.view as? ARSKView else {
-                    return
-                }
-
-                if let gameScene = GameScene(fileNamed: "GameScene") {
+                if let sceneView = self.view as? ARSKView, let gameScene = GameScene(fileNamed: "GameScene") {
                     sceneView.presentScene(gameScene, transition: transition)
                 }
             }

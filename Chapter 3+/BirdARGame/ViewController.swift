@@ -13,7 +13,7 @@ import ARKit
 class ViewController: UIViewController {
     
     @IBOutlet var sceneView: ARSKView!
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -51,10 +51,8 @@ class ViewController: UIViewController {
         super.didReceiveMemoryWarning()
         // Release any cached data, images, etc that aren't in use.
     }
-    
-
-
 }
+
 // MARK: - ARSKViewDelegate
 extension ViewController: ARSKViewDelegate {
     func view(_ view: ARSKView, nodeFor anchor: ARAnchor) -> SKNode? {

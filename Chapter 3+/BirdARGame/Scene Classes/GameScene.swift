@@ -15,8 +15,8 @@ import ARKit
 class GameScene: SKScene {
     
     var numberOfBirds = 10
-    var timerLabel:SKLabelNode!
-    var counterLabel:SKLabelNode!
+    var timerLabel: SKLabelNode!
+    var counterLabel: SKLabelNode!
 
     var remainingTime: Int = 30 {
         didSet {
@@ -33,8 +33,8 @@ class GameScene: SKScene {
     static var gameState: GameState = .none
 
     func setupHUD() {
-        timerLabel = self.childNode(withName: "timerLabel") as! SKLabelNode
-        counterLabel = self.childNode(withName: "counterLabel") as! SKLabelNode
+        timerLabel = self.childNode(withName: "timerLabel") as? SKLabelNode
+        counterLabel = self.childNode(withName: "counterLabel") as? SKLabelNode
 
         timerLabel.position = CGPoint(x: (self.size.width / 2) - 70,
                                       y: (self.size.height / 2) - 90)
@@ -54,17 +54,18 @@ class GameScene: SKScene {
     func gameOver() {
         let reveal = SKTransition.crossFade(withDuration: 0.9)
 
-        guard let sceneView = self.view as? ARSKView else {
+        guard let sceneView = self.view as? ARSKView,
+            let mainMenu = MainMenuScene(fileNamed: "MainMenuScene")else {
             return
         }
 
-        if let mainMenu = MainMenuScene(fileNamed: "MainMenuScene") {
-            sceneView.presentScene(mainMenu, transition: reveal)
-        }
+        sceneView.presentScene(mainMenu, transition: reveal)
     }
 
     override func didMove(to view: SKView) {
-        NotificationCenter.default.addObserver(self, selector: #selector(GameScene.spawnBird), name: Notification.Name("Spawn"), object: nil)
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(GameScene.spawnBird),
+                                               name: Notification.Name.birdDidFly, object: nil)
         setupHUD()
 
         let waitAction = SKAction.wait(forDuration: 0.5)
@@ -77,36 +78,46 @@ class GameScene: SKScene {
 
     override func update(_ currentTime: TimeInterval) {
 
-        if remainingTime == 0 {
+        guard remainingTime != 0 else {
             self.removeAllActions()
             gameOver()
+            return
         }
 
         guard let sceneView = self.view as? ARSKView else {
             return
         }
 
-        if let cameraZ = sceneView.session.currentFrame?.camera.transform.columns.3.z {
-            for node in nodes(at: CGPoint.zero) {
-                if let bird = node as? Bird {
-                    guard let anchors = sceneView.session.currentFrame?.anchors else {
-                        return
-                    }
+        detectCaptures(inSceneView: sceneView)
+    }
 
-                    for anchor in anchors {
-                        if abs(cameraZ - anchor.transform.columns.3.z) < 0.2 {
-                            if let potentialTargetBird = sceneView.node(for: anchor) {
-                                if bird == potentialTargetBird {
-                                    bird.removeFromParent()
-                                    spawnBird()
-                                    score += 1
-                                }
-                            }
-                        }
-                    }
+    func detectCaptures(inSceneView sceneView: ARSKView) {
+
+        guard let anchors = sceneView.session.currentFrame?.anchors,
+            let cameraZ = sceneView.session.currentFrame?.camera.transform.columns.3.z else {
+                return
+        }
+
+        // Grab relevant nodes
+        let birdNodes = nodes(at: CGPoint.zero).compactMap { $0 as? Bird }
+        let potentialCapturedBirds = anchors
+            .filter { abs(cameraZ - $0.transform.columns.3.z) < 0.2 }
+            .map { sceneView.node(for: $0) }
+
+        // Compare each bird node to our potential capture, if matched, act
+        for bird in birdNodes {
+            for potentialCapture in potentialCapturedBirds{
+                if bird == potentialCapture {
+                    capture(bird: bird)
                 }
             }
         }
+    }
+
+    func capture(bird: Bird) {
+        bird.removeFromParent()
+        spawnBird()
+        score += 1
     }
 
     func performInitialSpawn() {
@@ -118,21 +129,20 @@ class GameScene: SKScene {
     }
 
     @objc func spawnBird() {
-        guard let sceneView = self.view as? ARSKView else {
+        guard let sceneView = self.view as? ARSKView,
+            let currentFrame = sceneView.session.currentFrame else {
             return
         }
 
-        if let currentFrame = sceneView.session.currentFrame {
-            var translation = matrix_identity_float4x4
+        var translation = matrix_identity_float4x4
 
-            translation.columns.3.x = randomPosition(lowerBound: -1.5, upperBound: 1.5)
-            translation.columns.3.y = randomPosition(lowerBound: -1.5, upperBound: 1.5)
-            translation.columns.3.z = randomPosition(lowerBound: -2, upperBound: 2)
+        translation.columns.3.x = randomPosition(lowerBound: -1.5, upperBound: 1.5)
+        translation.columns.3.y = randomPosition(lowerBound: -1.5, upperBound: 1.5)
+        translation.columns.3.z = randomPosition(lowerBound: -2, upperBound: 2)
 
-            let transform = simd_mul(currentFrame.camera.transform, translation)
+        let transform = simd_mul(currentFrame.camera.transform, translation)
 
-            let anchor = ARAnchor(transform: transform)
-            sceneView.session.add(anchor: anchor)
-        }
+        let anchor = ARAnchor(transform: transform)
+        sceneView.session.add(anchor: anchor)
     }
 }
